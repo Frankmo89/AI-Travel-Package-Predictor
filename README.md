@@ -213,7 +213,7 @@ streamlit run app/app.py
 ## 🌐 Live Demo
 
 <!-- TODO: Replace with your actual Streamlit Cloud URL after deployment -->
-🔗 **[Click here to try the live app](https://your-app-url.streamlit.app)**
+🔗 **[Click here to try the live app](https://ai-travel-package-predictor.streamlit.app/)**
 
 ---
 
