@@ -116,19 +116,27 @@ This project solves both problems by predicting exact travel package costs for f
 
 
 
-Home Page 
-![alt text](image.png)
+## Home
 
-![alt text](image-6.png)
-Cost Predictor
-![alt text](image-2.png)
 
-![alt text](image-5.png)
+![alt text](screenshots/image.png)
 
-VIP Detector 
-![alt text](image-3.png)
 
-![alt text](image-4.png)
+![alt text](screenshots/image-6.png)
+
+## Cost Predictor
+
+![alt text](screenshots/image-2.png)
+
+
+![alt text](screenshots/image-5.png)
+
+## VIP Detector 
+
+![alt text](screenshots/image-3.png)
+
+
+![alt text](screenshots/image-4.png)
 
 
 ## 💡 Key Findings & Challenges Overcome
