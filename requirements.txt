@@ -22,3 +22,6 @@ groq>=0.12.0
 # Jupyter Notebooks (for local development)
 notebook>=6.5.0
 ipykernel>=6.20.0
+
+
+shap>=0.44.0

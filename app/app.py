@@ -16,6 +16,7 @@ import numpy as np
 import joblib
 import plotly.graph_objects as go
 import plotly.express as px
+import matplotlib.pyplot as plt
 import json
 from pathlib import Path
 from prompts import EXTRACTION_PROMPT, ADVISOR_PROMPT
@@ -303,6 +304,55 @@ def create_feature_importance_chart(importance_df, title="Feature Importance"):
         margin=dict(t=40, b=30, l=10, r=10),
         plot_bgcolor='rgba(0,0,0,0)',
     )
+    return fig
+
+
+@st.cache_resource
+def get_shap_explainer(_model):
+    """Cache the SHAP explainer so it's only built once per model."""
+    import shap
+    return shap.TreeExplainer(_model)
+
+
+def create_shap_waterfall(model, scaler, input_df, feature_names,
+                          model_type="regression", predicted_index=None):
+    """
+    Generate a SHAP waterfall chart explaining an individual prediction.
+    Shows how each feature pushed the prediction up or down from the baseline.
+
+    Parameters
+    ----------
+    model : trained sklearn model
+    scaler : fitted StandardScaler
+    input_df : DataFrame with original (unscaled) input values (single row)
+    feature_names : list of feature names
+    model_type : 'regression' or 'classification'
+    predicted_index : int — index of predicted class (classification only)
+
+    Returns
+    -------
+    matplotlib.figure.Figure
+    """
+    import shap
+    import matplotlib.pyplot as plt
+
+    scaled_input = scaler.transform(input_df)
+
+    explainer = get_shap_explainer(model)
+    explanation = explainer(scaled_input)
+
+    # Display original values (not scaled) so the chart is human-readable
+    explanation.data = input_df.values
+    explanation.feature_names = list(feature_names)
+
+    # For multi-class classification, isolate the predicted class
+    if model_type == "classification" and predicted_index is not None:
+        explanation = explanation[:, :, predicted_index]
+
+    plt.figure(figsize=(10, 5))
+    shap.plots.waterfall(explanation[0], show=False)
+    fig = plt.gcf()
+    fig.tight_layout()
     return fig
 
 
@@ -699,6 +749,25 @@ elif page == "📈 Cost Predictor":
                     use_container_width=True
                 )
 
+        # --- SHAP waterfall — individual prediction explanation ---
+        with st.expander("🔬 Why This Specific Price? (SHAP Explanation)"):
+            st.write(
+                "Unlike global feature importance, SHAP shows how each feature "
+                "pushed **this specific prediction** up or down from the average price."
+            )
+            try:
+                fig = create_shap_waterfall(
+                    model=models['regression_model'],
+                    scaler=models['regression_scaler'],
+                    input_df=input_df,
+                    feature_names=features,
+                    model_type="regression"
+                )
+                st.pyplot(fig)
+                plt.close('all')
+            except Exception:
+                st.info("SHAP explainability requires the shap package: `pip install shap`")
+
         # --- Raw input ---
         with st.expander("📋 View Raw Input Data"):
             st.dataframe(input_df)
@@ -855,6 +924,26 @@ elif page == "🏷️ VIP Client Detector":
                     ),
                     use_container_width=True
                 )
+
+        # --- SHAP waterfall — individual classification explanation ---
+        with st.expander("🔬 Why This Specific Classification? (SHAP Explanation)"):
+            st.write(
+                "Unlike global feature importance, SHAP shows how each feature "
+                "pushed **this specific classification** toward or away from the predicted tier."
+            )
+            try:
+                fig = create_shap_waterfall(
+                    model=models['classification_model'],
+                    scaler=models['classification_scaler'],
+                    input_df=input_df,
+                    feature_names=features,
+                    model_type="classification",
+                    predicted_index=predicted_index
+                )
+                st.pyplot(fig)
+                plt.close('all')
+            except Exception:
+                st.info("SHAP explainability requires the shap package: `pip install shap`")
 
         # --- Raw input ---
         with st.expander("📋 View Raw Client Data"):
