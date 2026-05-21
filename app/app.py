@@ -16,7 +16,9 @@ import numpy as np
 import joblib
 import plotly.graph_objects as go
 import plotly.express as px
+import json
 from pathlib import Path
+from prompts import EXTRACTION_PROMPT, ADVISOR_PROMPT
 
 # =============================================================================
 # PAGE CONFIGURATION — Must be the FIRST Streamlit command
@@ -403,7 +405,7 @@ st.sidebar.title("Navigation")
 # Navigation radio — these are the ONLY way to switch pages
 page = st.sidebar.radio(
     "Choose a section:",
-    ["🏠 Home", "📈 Cost Predictor", "🏷️ VIP Client Detector"]
+    ["🏠 Home", "📈 Cost Predictor", "🏷️ VIP Client Detector", "🤖 AI Travel Advisor"]
 )
 
 # --- Clarify which model is behind each page ---
@@ -416,6 +418,8 @@ st.sidebar.markdown(
     
     - 🏷️ **VIP Client Detector** → *Classification Model*  
       Classifies clients into spending tiers (Low / Medium / High).
+    
+    - 🤖 **AI Advisor** → *Both models + LLM-powered natural language interface*
     """
 )
 
@@ -855,6 +859,188 @@ elif page == "🏷️ VIP Client Detector":
         # --- Raw input ---
         with st.expander("📋 View Raw Client Data"):
             st.dataframe(input_df)
+
+
+# =============================================================================
+# AI TRAVEL ADVISOR PAGE — Groq-powered conversational interface
+# =============================================================================
+elif page == "🤖 AI Travel Advisor":
+    st.title("🤖 AI Travel Advisor")
+    st.markdown(
+        "Describe your trip in plain English — the AI extracts parameters, "
+        "runs both ML models, and gives you a data-backed travel recommendation."
+    )
+    st.markdown("---")
+
+    # --- Groq API key check ---
+    try:
+        groq_api_key = st.secrets["GROQ_API_KEY"]
+    except (KeyError, FileNotFoundError):
+        st.error(
+            "⚠️ **Groq API key not configured.** "
+            "Add `GROQ_API_KEY = \"your-key\"` to `.streamlit/secrets.toml` "
+            "and restart the app."
+        )
+        st.stop()
+
+    # --- Lazy Groq client — cached so it is only instantiated once per session ---
+    @st.cache_resource
+    def get_groq_client(api_key):
+        from groq import Groq
+        return Groq(api_key=api_key)
+
+    groq_client = get_groq_client(groq_api_key)
+
+    # --- Load ML models ---
+    models = load_models()
+    if models is None:
+        st.stop()
+    class_labels = models['label_encoder'].classes_
+
+    # --- Initialize chat history ---
+    if "advisor_messages" not in st.session_state:
+        st.session_state["advisor_messages"] = []
+
+    # --- Render existing chat history ---
+    for msg in st.session_state["advisor_messages"]:
+        with st.chat_message(msg["role"]):
+            st.markdown(msg["content"])
+            # Re-render charts saved alongside the assistant message
+            if "gauge_fig" in msg:
+                st.plotly_chart(msg["gauge_fig"], use_container_width=True)
+            if "prob_fig" in msg:
+                st.plotly_chart(msg["prob_fig"], use_container_width=True)
+
+    # --- Chat input ---
+    user_input = st.chat_input(
+        "Describe your trip (e.g. 'IndiGo, 3 places, direct flight in July')"
+    )
+
+    if user_input:
+        # Append and display the user message
+        st.session_state["advisor_messages"].append({"role": "user", "content": user_input})
+        with st.chat_message("user"):
+            st.markdown(user_input)
+
+        with st.chat_message("assistant"):
+            with st.spinner("Analyzing your trip..."):
+
+                # =============================================================
+                # CALL 1 — Extract structured parameters from natural language
+                # =============================================================
+                try:
+                    extraction_response = groq_client.chat.completions.create(
+                        model="llama-3.3-70b-versatile",
+                        messages=[
+                            {"role": "system", "content": EXTRACTION_PROMPT},
+                            {"role": "user", "content": user_input},
+                        ],
+                        temperature=0.1,
+                        max_tokens=512,
+                    )
+                    raw_extraction = extraction_response.choices[0].message.content.strip()
+                except Exception as e:
+                    err_text = f"❌ Could not reach the Groq API: {e}"
+                    st.error(err_text)
+                    st.session_state["advisor_messages"].append(
+                        {"role": "assistant", "content": err_text}
+                    )
+                    st.stop()
+
+                # --- Parse extraction JSON ---
+                try:
+                    extraction = json.loads(raw_extraction)
+                except json.JSONDecodeError:
+                    fallback_text = (
+                        "I had trouble parsing that. Could you rephrase? "
+                        "Try something like: *'Emirates, 4 stops, 5 destinations, July'*"
+                    )
+                    st.markdown(fallback_text)
+                    st.caption(f"Raw model output: `{raw_extraction[:200]}`")
+                    st.session_state["advisor_messages"].append(
+                        {"role": "assistant", "content": fallback_text}
+                    )
+                    st.stop()
+
+                # --- Not a travel query: show the LLM reply and stop ---
+                if not extraction.get("extracted", False):
+                    msg_text = extraction.get("message", "Could you describe a travel itinerary?")
+                    st.markdown(msg_text)
+                    st.session_state["advisor_messages"].append(
+                        {"role": "assistant", "content": msg_text}
+                    )
+                    st.stop()
+
+                # =============================================================
+                # ML PREDICTIONS — use extracted params with both models
+                # =============================================================
+                params = extraction["params"]
+                assumptions = extraction.get("assumptions", [])
+                missing_info = extraction.get("missing_info", [])
+
+                input_df = pd.DataFrame([params])
+
+                reg_prediction = make_regression_prediction(models, input_df)
+                predicted_label, _, probabilities = make_classification_prediction(models, input_df)
+
+                # =============================================================
+                # CALL 2 — Advisor narrative using both model outputs
+                # =============================================================
+                context = (
+                    f"User query: {user_input}\n\n"
+                    f"Extracted parameters: {params}\n\n"
+                    f"Assumptions made: {assumptions}\n\n"
+                    f"Missing info that was guessed: {missing_info}\n\n"
+                    f"Regression prediction (estimated cost): ${reg_prediction:,.2f}\n\n"
+                    f"Classification prediction: {predicted_label}\n"
+                    f"Class probabilities: "
+                    f"{ {label: f'{prob:.1%}' for label, prob in zip(class_labels, probabilities)} }"
+                )
+
+                try:
+                    advisor_response = groq_client.chat.completions.create(
+                        model="llama-3.3-70b-versatile",
+                        messages=[
+                            {"role": "system", "content": ADVISOR_PROMPT},
+                            {"role": "user", "content": context},
+                        ],
+                        temperature=0.7,
+                        max_tokens=400,
+                    )
+                    advisor_text = advisor_response.choices[0].message.content.strip()
+                except Exception as e:
+                    err_text = f"❌ Advisor call failed: {e}"
+                    st.error(err_text)
+                    st.session_state["advisor_messages"].append(
+                        {"role": "assistant", "content": err_text}
+                    )
+                    st.stop()
+
+                # =============================================================
+                # DISPLAY — advisor text + gauge + probability chart
+                # =============================================================
+                st.markdown(advisor_text)
+
+                # Gauge chart — cost position in the overall price range
+                gauge_fig = create_gauge_chart(
+                    value=reg_prediction,
+                    min_val=0,
+                    max_val=171062.5,
+                    title="Estimated Cost — Where It Falls"
+                )
+                st.plotly_chart(gauge_fig, use_container_width=True)
+
+                # Probability chart — model confidence per spending tier
+                prob_fig = create_probability_chart(probabilities, class_labels)
+                st.plotly_chart(prob_fig, use_container_width=True)
+
+                # Save message + figures so they survive reruns
+                st.session_state["advisor_messages"].append({
+                    "role": "assistant",
+                    "content": advisor_text,
+                    "gauge_fig": gauge_fig,
+                    "prob_fig": prob_fig,
+                })
 
 
 # =============================================================================

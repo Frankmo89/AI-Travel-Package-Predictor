@@ -16,6 +16,9 @@ joblib>=1.2.0
 # Web App
 streamlit>=1.28.0
 
+# AI / LLM
+groq>=0.12.0
+
 # Jupyter Notebooks (for local development)
 notebook>=6.5.0
 ipykernel>=6.20.0

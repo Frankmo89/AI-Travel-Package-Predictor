@@ -295,7 +295,7 @@ streamlit run app/app.py
 
 ## 🌐 Live Demo
 
-🔗 **[Try the live app](YOUR_STREAMLIT_URL)**
+🔗 **[Try the live app](https://ai-travel-package-predictor.streamlit.app/)**
 
 ---
 
@@ -303,7 +303,7 @@ streamlit run app/app.py
 
 **Francisco Molina** — travel agent turned ML engineer.
 
-I founded [**Nomaderia**](https://nomaderia.vercel.app), a bilingual
+I founded [**Nomaderia**](https://nomaderia.com), a bilingual
 (EN/ES) travel-concierge service for digital nomads operating across
 the Tijuana–San Diego border. This project applies ML directly to the
 pricing and client-segmentation problems I work with every day.
