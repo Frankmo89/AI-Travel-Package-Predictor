@@ -978,10 +978,17 @@ elif page == "🤖 AI Travel Advisor":
                 assumptions = extraction.get("assumptions", [])
                 missing_info = extraction.get("missing_info", [])
 
-                input_df = pd.DataFrame([params])
+                # --- Remap LLM key names to the exact feature names the
+                #     scalers were fitted on (e.g. "Flight_Stops" → "Flight Stops")
+                KEY_MAP = {"Flight_Stops": "Flight Stops"}
+                params = {KEY_MAP.get(k, k): v for k, v in params.items()}
 
-                reg_prediction = make_regression_prediction(models, input_df)
-                predicted_label, _, probabilities = make_classification_prediction(models, input_df)
+                # Build DataFrames with columns in the exact order each scaler expects
+                reg_df = pd.DataFrame([params], columns=models['regression_features'])
+                cls_df = pd.DataFrame([params], columns=models['classification_features'])
+
+                reg_prediction = make_regression_prediction(models, reg_df)
+                predicted_label, _, probabilities = make_classification_prediction(models, cls_df)
 
                 # =============================================================
                 # CALL 2 — Advisor narrative using both model outputs
