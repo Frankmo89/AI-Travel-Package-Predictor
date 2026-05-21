@@ -349,10 +349,19 @@ def create_shap_waterfall(model, scaler, input_df, feature_names,
     if model_type == "classification" and predicted_index is not None:
         explanation = explanation[:, :, predicted_index]
 
-    plt.figure(figsize=(10, 5))
-    shap.plots.waterfall(explanation[0], show=False)
+    plt.figure(figsize=(8, 4))
+    plt.rcParams.update({
+        'figure.facecolor': '#0E1117',
+        'axes.facecolor': '#0E1117',
+        'text.color': 'white',
+        'axes.labelcolor': 'white',
+        'xtick.color': 'white',
+        'ytick.color': 'white',
+    })
+    shap.plots.waterfall(explanation[0], max_display=6, show=False)
     fig = plt.gcf()
     fig.tight_layout()
+    fig.patch.set_alpha(0.0)
     return fig
 
 

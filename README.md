@@ -156,6 +156,17 @@ provides a numerical sanity check for the classification prediction: if the
 classifier says "VIP" and the regressor estimates $65,000, that's a consistent
 signal. If they contradict each other, it surfaces edge cases worth reviewing.
 
+### 5. SHAP for individual prediction transparency
+
+Global feature importance tells you which features matter in general.
+SHAP (SHapley Additive exPlanations) tells you why the model predicted
+*this specific price* for *this specific itinerary*. I integrated
+TreeExplainer — which computes exact Shapley values for tree-based
+models — into both the regression and classification pages. Each
+prediction now includes a waterfall chart that decomposes the output
+into per-feature contributions. This is the level of interpretability
+that production ML systems require and that stakeholders actually understand.
+
 ---
 
 ## ✨ App Features
@@ -173,6 +184,11 @@ signal. If they contradict each other, it surfaces edge cases worth reviewing.
   every input to cross-validate each other.
 - **Feature Importance Charts:** Interactive Plotly charts explaining which
   features drive each model's decisions.
+- **SHAP Explainability (Individual Predictions):** Waterfall charts
+  powered by SHAP showing exactly how each feature pushed a specific
+  prediction up or down from the baseline — not just global importance,
+  but per-prediction explanations that answer "why this price for this
+  itinerary?"
 - **AI Travel Advisor (LLM + ML):** Describe your trip in plain English —
   the system extracts parameters via Groq/Llama 3.3, runs both ML models,
   and returns a data-backed travel recommendation with interactive charts.
