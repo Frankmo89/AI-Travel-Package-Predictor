@@ -173,6 +173,9 @@ signal. If they contradict each other, it surfaces edge cases worth reviewing.
   every input to cross-validate each other.
 - **Feature Importance Charts:** Interactive Plotly charts explaining which
   features drive each model's decisions.
+- **AI Travel Advisor (LLM + ML):** Describe your trip in plain English —
+  the system extracts parameters via Groq/Llama 3.3, runs both ML models,
+  and returns a data-backed travel recommendation with interactive charts.
 
 ---
 
@@ -195,6 +198,10 @@ signal. If they contradict each other, it surfaces edge cases worth reviewing.
 ![VIP detector input form](screenshots/vip-detector-form.png)
 
 ![VIP detector result with probability breakdown and business strategy](screenshots/vip-detector-result.png)
+
+### AI Travel Advisor
+
+![AI Travel Advisor chatbot with natural language predictions](screenshots/ai-advisor.png)
 
 ---
 
