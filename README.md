@@ -1,24 +1,41 @@
 # ✈️ AI Travel Package Predictor
 
-> ML-powered travel app that predicts package costs and detects VIP clients — built with Streamlit, Gradient Boosting, and real business logic.
+> End-to-end ML pipeline that predicts travel package costs and identifies VIP
+> clients — built by a certified travel agent who also writes the code.
 
 ![Python](https://img.shields.io/badge/Python-3.9+-blue?logo=python&logoColor=white)
 ![Streamlit](https://img.shields.io/badge/Streamlit-1.30+-FF4B4B?logo=streamlit&logoColor=white)
 ![scikit-learn](https://img.shields.io/badge/scikit--learn-1.3+-F7931E?logo=scikitlearn&logoColor=white)
-![Status](https://img.shields.io/badge/Status-Deployed-brightgreen)
+![Status](https://img.shields.io/badge/Status-Live-brightgreen)
+[![Live Demo](https://img.shields.io/badge/Demo-Streamlit_Cloud-FF4B4B?logo=streamlit)](YOUR_STREAMLIT_URL)
+
+---
+
+## Why this project exists
+
+I run **[Nomaderia](https://nomaderia.vercel.app)** — a bilingual travel-concierge
+business serving digital nomads across the Tijuana–San Diego border region. As a
+certified travel agent, I quote trip packages manually every week: checking routes,
+estimating prices, deciding which clients are worth a premium pitch.
+
+That process is slow and inconsistent. So I built an ML system to automate it.
+
+This is not a generic dataset exercise. Every modeling decision in this project
+was informed by how travel pricing actually works and what a travel business
+actually needs from a prediction system.
 
 ---
 
 ## 📋 Table of Contents
 
-- [Project Overview](#-project-overview)
 - [Problem Statement](#-problem-statement)
 - [Dataset](#-dataset)
 - [Features Used](#-features-used)
 - [Model Performance](#-model-performance)
+- [Key Technical Decisions](#-key-technical-decisions)
 - [App Features](#-app-features)
 - [Screenshots](#-screenshots)
-- [Key Findings & Challenges Overcome](#-key-findings--challenges-overcome)
+- [Limitations & Future Work](#-limitations--future-work)
 - [Tech Stack](#-tech-stack)
 - [Project Structure](#-project-structure)
 - [How to Run Locally](#-how-to-run-locally)
@@ -27,24 +44,18 @@
 
 ---
 
-## 🌍 Project Overview
-
-**Student:** Francisco Molina  
-**Course:** AI & ML Bootcamp — Individual Capstone Project  
-**Dataset:** Workation Price Prediction Challenge (MachineHack)
-
-This project demonstrates an **end-to-end Machine Learning pipeline**, from exploratory data analysis and preprocessing, through model training and optimization, to deploying a business-ready web application with interactive predictions.
-
----
-
 ## 🎯 Problem Statement
 
-Travel companies need to:
+A travel business faces two recurring operational problems:
 
-1. **Accurately price group trips** — Manual quoting is slow and inconsistent. A regression model provides instant, data-driven cost estimates based on itinerary complexity.
-2. **Quickly identify potential VIP clients** — High spenders represent the most valuable segment but are a minority in the data. A classification model tuned for high recall ensures premium leads are rarely missed.
+**1. Pricing inconsistency** — Manual quoting is slow and agent-dependent.
+Two agents quoting the same itinerary can land $3,000 apart. A regression
+model provides an instant, data-driven baseline that anchors every quote.
 
-This project solves both problems by predicting exact travel package costs for fast quoting, and classifying travelers into spending tiers (Low, Medium, High Spender) to optimize upselling strategies and maximize revenue.
+**2. Wasted sales effort on the wrong leads** — High-value clients represent
+only 14.3% of the customer base but generate disproportionate revenue. Missing
+one is expensive. A classification model tuned for maximum recall on that
+minority class ensures premium leads are almost never missed.
 
 ---
 
@@ -53,9 +64,12 @@ This project solves both problems by predicting exact travel package costs for f
 | Detail | Value |
 |--------|-------|
 | **Source** | Workation Price Prediction Challenge (MachineHack) |
-| **Records** | ~16,000+ travel itineraries |
-| **Target (Regression)** | Travel Package Price (Continuous) |
-| **Target (Classification)** | Spending Tier — Low / Medium / High Spender (Categorical, binned from price) |
+| **Records** | 20,997 travel itineraries |
+| **Target — Regression** | Per Person Price (continuous) |
+| **Target — Classification** | Spending tier binned from price: Low / Medium / High |
+| **Price range (full)** | $791 – $171,063 |
+| **Median price** | $17,766 |
+| **Tier distribution** | Low 37.4% · Medium 48.3% · **High 14.3%** ← minority class |
 
 ---
 
@@ -65,90 +79,160 @@ This project solves both problems by predicting exact travel package costs for f
 |---|---------|------|-------------|
 | 1 | `Destination` | Label Encoded | 565 unique destination route combinations |
 | 2 | `Airline` | Label Encoded | 314 unique airline route combinations |
-| 3 | `Journey_Month` | Numeric (1-12) | Month of travel |
-| 4 | `Num_Places_Visited` | Numeric | Number of destinations in the itinerary |
+| 3 | `Journey_Month` | Numeric (1–12) | Month of travel |
+| 4 | `Num_Places_Visited` | Numeric | Number of stops in the itinerary |
 | 5 | `Flight Stops` | Numeric | Number of layovers |
-| 6 | `Trip_Complexity` | Engineered | Composite score representing itinerary complexity |
+| 6 | `Trip_Complexity` | Engineered | Composite score for itinerary complexity |
 
 ---
 
 ## 📈 Model Performance
 
-### Regression Model — Gradient Boosting Regressor
+### Regression — Gradient Boosting Regressor
 
-| Metric | Score |
-|--------|-------|
-| R² Score | **0.66** |
-| Test RMSE | **$7,116** |
-| Test MAE | $4,129 |
-| RMSE as % of Price Range | **4.2%** (Low error relative to range) |
+| Metric | Value | Context |
+|--------|-------|---------|
+| R² Score | **0.66** | Moderate fit; 6 features, high-cardinality encodings |
+| Test RMSE | **$7,116** | Against a median price of $17,766 |
+| Test MAE | **$4,129** | Typical prediction is off by ~$4K on a ~$18K package |
 
-### Classification Model — Business-Optimized Gradient Boosting
+The model is well-suited for automated tier classification and ballpark quoting.
+It is not precise enough to replace final agent review for contract pricing —
+a trade-off I address in [Limitations](#-limitations--future-work).
 
-| Metric | Score |
+### Classification — Business-Optimized Gradient Boosting
+
+| Metric | Value |
 |--------|-------|
 | Accuracy | **77%** |
 | VIP Recall (High Spender) | **81%** ⭐ |
 | Weighted F1-Score | **0.77** |
 | Test Samples | 4,200 |
 
-| Class | Precision | Recall | F1-Score |
-|-------|-----------|--------|----------|
-| High Spender | 0.60 | **0.81** | 0.69 |
+| Class | Precision | Recall | F1 |
+|-------|-----------|--------|----|
+| High Spender (VIP) | 0.60 | **0.81** | 0.69 |
 | Low Spender | 0.80 | 0.86 | 0.83 |
 | Medium Spender | 0.81 | 0.68 | 0.74 |
+
+The business objective was to maximize recall on High Spenders — catching 81%
+of VIP leads at the cost of some false positives is the right trade-off in a
+sales context where a missed premium client is far more expensive than an
+over-qualified follow-up.
+
+---
+
+## 💡 Key Technical Decisions
+
+### 1. Class imbalance → `compute_sample_weight`
+
+High Spenders represent only **14.3% of the dataset** (3,001 out of 20,997
+records). Without intervention, the classifier would learn to mostly ignore
+them. I applied `compute_sample_weight('balanced')` during training to
+penalize misclassification of the minority class proportionally to its
+underrepresentation. This raised VIP Recall from ~55% (baseline) to **81%**,
+directly aligning the model with the business objective.
+
+### 2. High-cardinality categoricals → Label Encoding + tree models
+
+With 565 destination combinations and 314 airline combinations, One-Hot
+Encoding would have created ~880 sparse binary columns and dramatically
+slowed training. Label Encoding paired with Gradient Boosting — a tree-based
+algorithm that handles numeric categorical representations natively — kept
+the feature space lean without information loss.
+
+### 3. Bridging model inputs and real-world UX
+
+Deploying a model that expected raw encoded integers (0–564 for destinations)
+would make the app unusable in a live demo. I engineered pre-loaded travel
+scenarios that map the most frequent real route codes from the dataset to
+human-readable buttons (e.g. "Premium Long-Haul — Singapore Airlines"), making
+the app presentation-ready without altering the model's expected inputs.
+
+### 4. Cross-model validation
+
+Both models run on the same input simultaneously. The regression output
+provides a numerical sanity check for the classification prediction: if the
+classifier says "VIP" and the regressor estimates $65,000, that's a consistent
+signal. If they contradict each other, it surfaces edge cases worth reviewing.
 
 ---
 
 ## ✨ App Features
 
-- **📈 Cost Predictor (Regression):** Interactive gauge chart showing where the predicted price falls in the budget-to-premium range
-- **🏷️ VIP Client Detector (Classification):** Probability bar chart showing model confidence per spending tier, with actionable business strategies per category
-- **⚡ Pre-Loaded Scenarios:** One-click demo profiles (Budget IndiGo, Emirates International, Singapore Airlines Premium) using real encoded values from the dataset
-- **🔄 What-If Analysis:** See how price changes when adding +1 flight stop, +2 destinations, or +2 complexity — with live delta indicators
-- **🔗 Cross-Model Insight:** Both models run on the same input to validate each other — classification says "VIP" and regression confirms the premium price
-- **🔍 Feature Importance Charts:** Interactive Plotly charts showing which features drive each model's decisions
-- **📊 Model Metrics Dashboard:** Real performance scores displayed on the home page for transparency
+- **Cost Predictor (Regression):** Gauge chart showing where the predicted
+  price falls across the budget-to-premium range.
+- **VIP Client Detector (Classification):** Probability bar chart with
+  model confidence per tier, plus an actionable sales strategy per result.
+- **Pre-Loaded Scenarios:** One-click demo profiles (Budget Direct, Emirates
+  Multi-City, Singapore Airlines Premium) using real encoded values from the
+  dataset.
+- **What-If Analysis:** Live delta indicators showing how price changes with
+  +1 flight stop, +2 destinations, or +2 complexity.
+- **Cross-Model Insight:** Regression and classification run together on
+  every input to cross-validate each other.
+- **Feature Importance Charts:** Interactive Plotly charts explaining which
+  features drive each model's decisions.
 
 ---
 
 ## 📸 Screenshots
 
+### Home
 
+![Home dashboard with model metrics overview](screenshots/home-dashboard.png)
 
-## Home
+![Feature importance chart on home page](screenshots/home-metrics.png)
 
+### Cost Predictor
 
-![alt text](screenshots/image.png)
+![Cost predictor input form with scenario selector](screenshots/cost-predictor-form.png)
 
+![Cost predictor result with gauge chart and what-if analysis](screenshots/cost-predictor-result.png)
 
-![alt text](screenshots/image-6.png)
+### VIP Client Detector
 
-## Cost Predictor
+![VIP detector input form](screenshots/vip-detector-form.png)
 
-![alt text](screenshots/image-2.png)
+![VIP detector result with probability breakdown and business strategy](screenshots/vip-detector-result.png)
 
+---
 
-![alt text](screenshots/image-5.png)
+## ⚠️ Limitations & Future Work
 
-## VIP Detector 
+**Limitations I'm aware of:**
 
-![alt text](screenshots/image-3.png)
+- **R² of 0.66** reflects the limited feature set. With only 6 features —
+  two of which are high-cardinality label encodings that obscure route-specific
+  patterns — the model captures ~66% of price variance. Incorporating flight
+  duration, seasonality indices, or accommodation tier would likely push R²
+  above 0.80.
 
+- **Classification tiers are derived from the regression target.** The
+  Low / Medium / High bins were created by thresholding the price column
+  ($0–15K, $15K–30K, >$30K). This means both models solve related versions
+  of the same problem. The classification results are interpretable and
+  consistent, but they are not an independent validation of the regression
+  model.
 
-![alt text](screenshots/image-4.png)
+- **Label Encoding assumes ordinality.** Gradient Boosting handles this well
+  in practice, but destination code 400 has no inherently "higher" value than
+  code 200. Target encoding or embeddings would be a more principled approach
+  for a production system.
 
+- **No temporal features.** Journey month is included, but year and booking
+  lead time — two strong price drivers in real travel markets — are not in
+  the dataset.
 
-## 💡 Key Findings & Challenges Overcome
+**If I were to extend this project:**
 
-### 1. Overcoming Class Imbalance for VIP Clients
-The initial classification model struggled to identify 'High Spenders' (VIPs) because they represented a minority class in the dataset. I solved this by implementing `compute_sample_weight` to apply balanced class weights during training. This adjustment heavily penalized false negatives and successfully **boosted VIP Recall to 81%**, directly aligning the model with the business goal of capturing premium leads.
-
-### 2. Managing High-Cardinality Categorical Data
-The dataset contained massive amounts of unique string combinations — **565 destination routes** and **314 airline combinations**. Instead of using One-Hot Encoding (which would have exploded the dimensionality and slowed down the model), I utilized **Label Encoding paired with tree-based Gradient Boosting models**, which handle numeric categorical representations highly effectively.
-
-### 3. Bridging Data Science and User Experience (UX)
-When deploying the Streamlit app, asking users to input raw encoded numbers for cities and airlines was poor UX. I overcame this by engineering **"Pre-Loaded Travel Scenarios"** in the frontend — mapping frequent, real-world route codes from the dataset to human-readable buttons (e.g., "Premium Long-Haul"). This made the app interactive and ready for live business demonstrations without breaking the model's expected inputs.
+- Add real destination and airline names via a lookup table, replacing the
+  raw encoded integers in the UI entirely.
+- Train on a multi-year dataset to capture seasonal and post-COVID pricing
+  shifts.
+- Replace label encoding with target encoding or a learned embedding for
+  the high-cardinality categoricals.
+- Integrate directly with Nomaderia's quoting workflow via API.
 
 ---
 
@@ -156,41 +240,40 @@ When deploying the Streamlit app, asking users to input raw encoded numbers for 
 
 | Category | Tools |
 |----------|-------|
-| **Language** | Python 3.9+ |
-| **ML Framework** | scikit-learn (Gradient Boosting) |
-| **Web App** | Streamlit |
-| **Data Processing** | Pandas, NumPy |
-| **Visualization** | Plotly, Matplotlib, Seaborn |
-| **Model Persistence** | Joblib |
-| **Deployment** | Streamlit Cloud |
-| **Version Control** | Git & GitHub |
+| Language | Python 3.9+ |
+| ML Framework | scikit-learn (Gradient Boosting) |
+| Web App | Streamlit |
+| Data Processing | Pandas, NumPy |
+| Visualization | Plotly, Matplotlib, Seaborn |
+| Model Persistence | Joblib |
+| Deployment | Streamlit Cloud |
+| Version Control | Git & GitHub |
 
 ---
-
 ## 📁 Project Structure
 
-```
 ├── app/
-│   └── app.py                  # Streamlit web application
+│   └── app.py                   # Streamlit web application
 ├── models/
-│   ├── regression_model.pkl    # Trained regression model
-│   ├── regression_scaler.pkl   # Regression feature scaler
-│   ├── regression_features.pkl # Regression feature names
-│   ├── classification_model.pkl# Trained classification model
+│   ├── regression_model.pkl     # Trained regression model
+│   ├── regression_scaler.pkl
+│   ├── regression_features.pkl
+│   ├── classification_model.pkl # Trained classification model
 │   ├── classification_scaler.pkl
-│   ├── label_encoder.pkl       # Target label encoder
+│   ├── label_encoder.pkl
 │   ├── classification_features.pkl
-│   └── binning_info.pkl        # Binning thresholds for categories
+│   └── binning_info.pkl         # Bin thresholds: Low ≤$15K, Mid $15–30K, High >$30K
 ├── notebooks/
-│   ├── 01_EDA.ipynb            # Exploratory Data Analysis
-│   ├── 02_Regression.ipynb     # Regression model training
-│   └── 03_Classification.ipynb # Classification model training
+│   ├── 01_EDA.ipynb
+│   ├── 02_Regression.ipynb
+│   └── 03_Classification.ipynb
 ├── data/
-│   └── dataset.csv             # Original dataset
-├── requirements.txt            # Python dependencies
-├── README.md                   # This file
-└── .gitignore
-```
+│   └── dataset.csv
+├── helpers/
+│   └── model_helpers.py
+├── screenshots/
+├── requirements.txt
+└── README.md
 
 ---
 
@@ -198,13 +281,13 @@ When deploying the Streamlit app, asking users to input raw encoded numbers for 
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/fsa-aiml-2511/individual-capstone-Frankmo89.git
-cd individual-capstone-Frankmo89
+git clone https://github.com/Frankmo89/AI-Travel-Package-Predictor.git
+cd AI-Travel-Package-Predictor
 
 # 2. Install dependencies
 pip install -r requirements.txt
 
-# 3. Run the Streamlit app
+# 3. Run the app
 streamlit run app/app.py
 ```
 
@@ -212,14 +295,21 @@ streamlit run app/app.py
 
 ## 🌐 Live Demo
 
-<!-- TODO: Replace with your actual Streamlit Cloud URL after deployment -->
-🔗 **[Click here to try the live app](https://ai-travel-package-predictor.streamlit.app/)**
+🔗 **[Try the live app](YOUR_STREAMLIT_URL)**
 
 ---
 
 ## 👤 Author
 
-**Francisco Molina**  
-AI & ML Bootcamp — Individual Capstone Project
+**Francisco Molina** — travel agent turned ML engineer.
+
+I founded [**Nomaderia**](https://nomaderia.vercel.app), a bilingual
+(EN/ES) travel-concierge service for digital nomads operating across
+the Tijuana–San Diego border. This project applies ML directly to the
+pricing and client-segmentation problems I work with every day.
 
 [![GitHub](https://img.shields.io/badge/GitHub-Frankmo89-181717?logo=github)](https://github.com/Frankmo89)
+
+---
+
+*MIT License*
